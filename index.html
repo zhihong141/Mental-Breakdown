@@ -271,7 +271,7 @@
         <div id="bloodOverlay"></div>
         <div id="container"></div>
         <div id="vignette"></div>
-        <div id="instruction">MOVE to build stress // CLICK to scream & release</div>
+        <div id="instruction">MOVE to build stress // PAUSE to hold</div>
         
         <!-- NEW SLIDER -->
         <div id="controls">
@@ -456,18 +456,18 @@
         const dy = y - lastY;
         const dist = Math.sqrt(dx*dx + dy*dy);
         
-        // Reset Sensitivity back to 1.0 (High sensitivity)
+        // Simplified Logic: Constant slow increase on any movement
         if (dist > 1.0) {
-            // Base gain + speed bonus
-            stress += 0.4 + (Math.min(dist, 50) * 0.02); 
+            stress += 0.15; // Constant slow increase
         }
 
         lastX = x;
         lastY = y;
 
-        const spawnChance = 0.3 + (stress / 200);
+        // Reduced spawn chance and radius
+        const spawnChance = 0.05 + (stress / 500); // Much lower base chance (5%)
         if (Math.random() < spawnChance) {
-            spawnText(inputX, inputY, 0.2 + (stress/200), 6.0); 
+            spawnText(inputX, inputY, 0.2 + (stress/200), 2.0); // Radius multiplier 2.0 (tighter)
         }
     }
 
@@ -546,58 +546,46 @@
         const cx = vortexCanvas.width / 2;
         const cy = vortexCanvas.height / 2;
         
-        // Use a very faint clear to leave trails? No, for "scratched" we re-draw jittery each frame
         ctxVortex.fillStyle = 'black';
         ctxVortex.fillRect(0, 0, vortexCanvas.width, vortexCanvas.height);
         
         ctxVortex.strokeStyle = '#555'; 
-        ctxVortex.lineCap = 'butt'; // Rougher ends
+        ctxVortex.lineCap = 'butt'; 
 
         const maxRadius = Math.max(cx, cy) * 1.5;
         
-        // 1. Draw Scratched Spiral
         ctxVortex.beginPath();
         for (let i = 0; i < 2000; i++) {
             const angle = 0.1 * i;
             const r = 4 * angle; 
             
-            // High jitter to make it look "scratched" and uneven
             const drawAngle = angle + vortexAngle + (Math.random() * 0.05);
             const jitterR = r + (Math.random() - 0.5) * 5;
 
             const x = cx + jitterR * Math.cos(drawAngle);
             const y = cy + jitterR * Math.sin(drawAngle);
             
-            // Randomly break the line (dashed effect)
             if (Math.random() > 0.15) {
                 ctxVortex.lineTo(x, y);
             } else {
                 ctxVortex.moveTo(x, y);
             }
             
-            // 2. Dripping Effect (Vertical lines dropping from spiral)
             if (Math.random() < 0.005) {
                 const dripLen = Math.random() * 60 + 10;
-                // Save pos
                 const prevX = x; 
                 const prevY = y;
-                
-                // Draw drip
                 ctxVortex.moveTo(x, y);
                 ctxVortex.lineTo(x, y + dripLen);
-                
-                // Return to spiral path
                 ctxVortex.moveTo(prevX, prevY); 
             }
 
             if (r > maxRadius) break;
         }
         
-        // Varying line width for texture
         ctxVortex.lineWidth = Math.random() * 2 + 1;
         ctxVortex.stroke();
         
-        // 3. Extra Texture/Noise Overlay
         ctxVortex.beginPath();
         ctxVortex.strokeStyle = '#222';
         for(let j=0; j<30; j++) {
@@ -629,7 +617,6 @@
                 container.innerHTML = ''; 
                 document.body.style.cursor = 'none'; 
                 
-                // Set Static Text
                 endText.innerHTML = "ケーブルで首を絞めろ、<br>それが君の望みだろ？";
                 
                 // TRIGGER SHUTDOWN
@@ -646,16 +633,14 @@
                 }, 10000);
             }
             
-            // Draw Vortex background during Game Over state
             drawVortex();
             return;
         }
 
         // 1. UPDATE AUDIO SFX
         if (audioCtx && masterGain && !isGameOver) {
-            if (stress > 1) { // Starts almost immediately
+            if (stress > 1) { 
                 let normalizedStress = (stress - 1) / 99; 
-                // Using 1.2 power for linear-ish but slightly curved ramp (louder sooner)
                 let targetVol = Math.pow(normalizedStress, 1.2); 
                 
                 if (stress < 70) {
@@ -681,13 +666,9 @@
         
         // 3. INPUT LOGIC
         if (isInputActive) {
-            stress -= 1.5; 
-            for(let i=0; i<3; i++) {
-                const rx = Math.random() * window.innerWidth;
-                const ry = Math.random() * window.innerHeight;
-                spawnText(rx, ry, 1.0); 
-            }
-            const camShake = 5;
+            // Removed logic that reduces stress or spawns text on hold
+            // Only visual shake remains if desired, or can be minimal
+            const camShake = 2;
             container.style.transform = `translate(${(Math.random()-0.5)*camShake}px, ${(Math.random()-0.5)*camShake}px)`;
         } else {
             container.style.transform = `none`;
