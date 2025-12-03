@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mental Noise</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700&family=Shippori+Mincho:wght@800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Shippori Mincho', 'Noto Serif JP', serif;
+            color: white;
+            user-select: none;
+            cursor: crosshair;
+            touch-action: none; 
+            -webkit-user-select: none;
+            transition: background-color 0.2s;
+        }
+
+        /* Container for all game elements to easily hide them later */
+        #gameWrapper {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .thought {
+            position: absolute;
+            white-space: nowrap;
+            pointer-events: none;
+            mix-blend-mode: exclusion;
+            font-weight: 800;
+            will-change: transform, opacity; 
+        }
+
+        /* The Vignette / Red Overlay */
+        #vignette {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 20%, black 120%);
+            pointer-events: none;
+            z-index: 999;
+            transition: box-shadow 0.1s;
+        }
+        
+        /* The "Bloody" Overlay */
+        #bloodOverlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent, #500 90%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 5;
+            mix-blend-mode: multiply;
+            transition: opacity 0.1s;
+        }
+
+        #instruction {
+            position: fixed;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            color: #444;
+            font-size: 14px;
+            font-family: sans-serif;
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            z-index: 1000;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+            font-family: sans-serif;
+            pointer-events: auto;
+        }
+
+        label { font-size: 10px; color: #666; letter-spacing: 1px; text-transform: uppercase; }
+        
+        /* New Stress Bar */
+        #stressContainer {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%;
+            height: 5px;
+            background: #111;
+            z-index: 1001;
+        }
+        #stressBar {
+            width: 0%;
+            height: 100%;
+            background: #f00;
+            transition: width 0.1s;
+        }
+
+        /* Game Over Screen */
+        #gameOverScreen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #vortexCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        #endText {
+            color: white;
+            font-size: 36px;
+            text-align: center;
+            font-family: 'Noto Serif JP', serif;
+            font-weight: 900;
+            letter-spacing: 2px;
+            padding: 0 20px; /* Safety padding for mobile */
+        }
+
+        /* Restart Screen */
+        #restartScreen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 3000;
+            font-family: sans-serif;
+            opacity: 0;
+            transition: opacity 2s ease-in;
+        }
+
+        .restart-msg {
+            color: #666;
+            font-size: 12px;
+            letter-spacing: 3px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        #restartBtn {
+            padding: 15px 40px;
+            background: transparent;
+            border: 1px solid #444;
+            color: white;
+            font-family: inherit;
+            letter-spacing: 2px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+        #restartBtn:hover {
+            border-color: white;
+            background: white;
+            color: black;
+        }
+
+        .designer-name {
+            position: absolute;
+            bottom: 40px;
+            color: #333;
+            font-size: 10px;
+            letter-spacing: 5px;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        /* Visual Diary Link Styles */
+        .designer-name a {
+            display: block;
+            margin-top: 8px;
+            color: #555;
+            font-size: 9px;
+            text-decoration: none;
+            letter-spacing: 2px;
+            transition: color 0.3s;
+            pointer-events: auto; /* Ensure clickable */
+        }
+        .designer-name a:hover {
+            color: #aaa;
+            text-shadow: 0 0 5px rgba(255,255,255,0.2);
+        }
+
+        input[type=range] {
+            -webkit-appearance: none; width: 150px; height: 4px; background: #333; outline: none; opacity: 0.7; transition: opacity .2s;
+        }
+        input[type=range]:hover { opacity: 1; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 15px; height: 15px; background: #fff; cursor: pointer; border-radius: 50%;
+        }
+
+        /* --- MOBILE LANDSCAPE OPTIMIZATIONS --- */
+        @media (orientation: landscape) and (max-height: 500px) {
+            #endText {
+                font-size: 24px; /* Smaller text for short screens */
+            }
+            .designer-name {
+                bottom: 15px; /* Move footer closer to edge */
+                font-size: 8px;
+            }
+            .designer-name a {
+                margin-top: 4px;
+            }
+            #restartBtn {
+                padding: 10px 30px; /* Compact button */
+                margin-bottom: 10px;
+            }
+            .restart-msg {
+                margin-bottom: 10px;
+            }
+            #controls {
+                bottom: 15px;
+                right: 15px;
+                scale: 0.8; 
+                transform-origin: bottom right;
+            }
+            #instruction {
+                bottom: 15px;
+                font-size: 10px;
+            }
+        }
+
+        /* --- BRUTE FORCE PORTRAIT TO LANDSCAPE --- */
+        @media screen and (orientation: portrait) {
+            body {
+                transform: rotate(90deg);
+                transform-origin: bottom left;
+                position: absolute;
+                top: -100vw;
+                left: 0;
+                height: 100vw;
+                width: 100vh;
+                overflow: hidden;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Wrapped Game Elements for easy toggling -->
+    <div id="gameWrapper">
+        <div id="stressContainer"><div id="stressBar"></div></div>
+        <div id="bloodOverlay"></div>
+        <div id="container"></div>
+        <div id="vignette"></div>
+        <div id="instruction">MOVE to build stress // CLICK to scream & release</div>
+        
+        <!-- NEW SLIDER -->
+        <div id="controls">
+            <label>Intrusion Rate</label>
+            <input type="range" id="intrusionSlider" min="0" max="0.3" step="0.001" value="0.05">
+        </div>
+    </div>
+
+    <!-- Phase 1: Game Over Message -->
+    <div id="gameOverScreen">
+        <canvas id="vortexCanvas"></canvas>
+        <div id="endText"></div>
+    </div>
+
+    <!-- Phase 2: Restart / Designer Screen -->
+    <div id="restartScreen">
+        <div class="restart-msg">Restart it</div>
+        <button id="restartBtn">Reboot System</button>
+        <div class="designer-name">
+            Seven.Four
+            <a href="https://linktr.ee/seven.four" target="_blank">Visual Diary</a>
+        </div>
+    </div>
+
+<script>
+    const gameWrapper = document.getElementById('gameWrapper');
+    const container = document.getElementById('container');
+    const intrusionSlider = document.getElementById('intrusionSlider');
+    const bloodOverlay = document.getElementById('bloodOverlay');
+    const stressBar = document.getElementById('stressBar');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const endText = document.getElementById('endText');
+    const restartScreen = document.getElementById('restartScreen');
+    const restartBtn = document.getElementById('restartBtn');
+    
+    // Vortex Canvas Setup
+    const vortexCanvas = document.getElementById('vortexCanvas');
+    const ctxVortex = vortexCanvas.getContext('2d');
+    let vortexAngle = 0;
+
+    // Standard words
+    const words = [
+        "WHY?", "STOP", "IT HURTS", "LOOK AT ME", "DON'T LOOK", 
+        "UGLY", "LIAR", "NO", "GET OUT", "SCREAM", 
+        "ERROR", "BROKEN", "ALONE", "DARKNESS", "NOISE"
+    ];
+
+    // Escalated "Aggressive" words
+    const jpWords = [
+        "痛い", "やめて", "なんで？", "嘘つき", "見ないで", 
+        "壊れてる", "バグ", "怖い", "死", "逃げられない",
+        "馬鹿", "死ね", "消えろ", "苦しい", "殺す", "ゴミ"
+    ];
+
+    const allWords = [...words, ...jpWords];
+
+    let frame = 0;
+    let activeThoughts = [];
+    
+    // GAME STATE
+    let stress = 0; // 0 to 100
+    let isGameOver = false;
+    let shutdownTriggered = false; 
+
+    // --- AUDIO SYSTEM ---
+    let audioCtx = null;
+    let masterGain = null;
+    let screamOsc1 = null;
+    let screamOsc2 = null;
+
+    function initAudio() {
+        if (audioCtx) return; 
+        
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+        
+        masterGain = audioCtx.createGain();
+        masterGain.connect(audioCtx.destination);
+        masterGain.gain.value = 0; // Start silent
+
+        screamOsc1 = audioCtx.createOscillator();
+        screamOsc1.type = 'sawtooth';
+        screamOsc1.frequency.value = 400; 
+        screamOsc1.start();
+        screamOsc1.connect(masterGain);
+
+        screamOsc2 = audioCtx.createOscillator();
+        screamOsc2.type = 'sawtooth';
+        screamOsc2.frequency.value = 405; 
+        screamOsc2.start();
+        screamOsc2.connect(masterGain);
+    }
+
+    function checkAudioContext() {
+        if (!audioCtx) initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    class GlitchText {
+        constructor(x, y, intensity) {
+            this.element = document.createElement('div');
+            this.element.className = 'thought';
+            
+            let wordPool = allWords;
+            if (stress > 60) wordPool = jpWords;
+
+            this.text = wordPool[Math.floor(Math.random() * wordPool.length)];
+            this.element.innerText = this.text;
+
+            this.x = x;
+            this.y = y;
+            this.baseX = x;
+            this.baseY = y;
+
+            this.intensity = intensity; 
+            this.life = 1.0; 
+            this.decay = 0.005 + (Math.random() * 0.02); 
+
+            const baseSize = 16 + (stress * 0.5); 
+            const size = baseSize + (Math.random() * 40 * (intensity + 0.2));
+            this.element.style.fontSize = `${size}px`;
+            
+            const redThreshold = 0.3 + (stress / 100); 
+            const isRed = Math.random() < (redThreshold * intensity);
+            this.color = isRed ? `rgb(${150 + Math.random()*100}, 0, 0)` : `rgb(255, 255, 255)`;
+            this.element.style.color = this.color;
+
+            container.appendChild(this.element);
+        }
+
+        update() {
+            this.life -= this.decay;
+            this.element.style.opacity = this.life;
+
+            const stressShake = stress * 0.5;
+            const shakeAmt = 5 + (this.intensity * 50) + stressShake; 
+            const offX = (Math.random() - 0.5) * shakeAmt;
+            const offY = (Math.random() - 0.5) * shakeAmt;
+
+            const skew = (Math.random() - 0.5) * (this.intensity * 90);
+            const scaleX = 1 + (Math.random() - 0.5) * this.intensity;
+            const scaleY = 1 + (Math.random() - 0.5) * this.intensity;
+
+            this.element.style.transform = `translate(${offX}px, ${offY}px) skew(${skew}deg) scale(${scaleX}, ${scaleY})`;
+            this.element.style.left = `${this.baseX}px`;
+            this.element.style.top = `${this.baseY}px`;
+
+            if (this.intensity > 0.5 || stress > 50) {
+                const rX = (Math.random() - 0.5) * 10;
+                const bX = (Math.random() - 0.5) * 10;
+                this.element.style.textShadow = `${rX}px 0 red, ${bX}px 0 cyan`;
+            } else {
+                this.element.style.textShadow = 'none';
+            }
+
+            if (Math.random() < 0.1 && this.intensity > 0.8) {
+                this.element.innerText = this.text.split('').map(c => Math.random() > 0.5 ? c : '?').join('');
+            }
+        }
+
+        isDead() { return this.life <= 0; }
+        destroy() { this.element.remove(); }
+    }
+
+    // --- INPUT HANDLING ---
+    let inputX = window.innerWidth / 2;
+    let inputY = window.innerHeight / 2;
+    let lastX = inputX;
+    let lastY = inputY;
+    let isInputActive = false;
+
+    function handleMove(x, y) {
+        if(isGameOver) return;
+        checkAudioContext();
+
+        inputX = x;
+        inputY = y;
+        
+        const dx = x - lastX;
+        const dy = y - lastY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        // Reset Sensitivity back to 1.0 (High sensitivity)
+        if (dist > 1.0) {
+            // Base gain + speed bonus
+            stress += 0.4 + (Math.min(dist, 50) * 0.02); 
+        }
+
+        lastX = x;
+        lastY = y;
+
+        const spawnChance = 0.3 + (stress / 200);
+        if (Math.random() < spawnChance) {
+            spawnText(inputX, inputY, 0.2 + (stress/200), 6.0); 
+        }
+    }
+
+    // --- EVENT LISTENERS ---
+    document.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+    
+    document.addEventListener('mousedown', (e) => {
+        checkAudioContext();
+        if(e.target.type !== 'range' && e.target.id !== 'restartBtn') isInputActive = true; 
+    });
+    document.addEventListener('mouseup', () => { isInputActive = false; });
+
+    document.addEventListener('touchstart', (e) => {
+        checkAudioContext();
+        if(e.target.type !== 'range' && e.target.id !== 'restartBtn') {
+            isInputActive = true;
+            
+            // Sync positions immediately to prevent "jump" effect from center
+            const t = e.touches[0];
+            inputX = t.clientX;
+            inputY = t.clientY;
+            lastX = inputX;
+            lastY = inputY;
+            
+            handleMove(t.clientX, t.clientY);
+        }
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+        if(e.target.type !== 'range') {
+            if(e.touches.length > 0) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => { isInputActive = false; });
+
+    restartBtn.addEventListener('click', restartGame);
+
+    function spawnText(x, y, intensity, radiusMultiplier = 1.0) {
+        if(isGameOver) return;
+        const spread = (50 * intensity) * radiusMultiplier;
+        const finalX = x + (Math.random() - 0.5) * spread;
+        const finalY = y + (Math.random() - 0.5) * spread;
+        const thought = new GlitchText(finalX, finalY, intensity);
+        activeThoughts.push(thought);
+    }
+
+    function restartGame() {
+        stress = 0;
+        isGameOver = false;
+        shutdownTriggered = false;
+        vortexAngle = 0;
+        
+        restartScreen.style.display = 'none';
+        restartScreen.style.opacity = '0';
+        gameOverScreen.style.display = 'none';
+        gameWrapper.style.display = 'block';
+        bloodOverlay.style.opacity = '0';
+        stressBar.style.width = '0%';
+        document.body.style.cursor = 'crosshair';
+        document.body.style.backgroundColor = 'black';
+
+        container.innerHTML = '';
+        activeThoughts = [];
+
+        if(audioCtx) masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+        
+        animate();
+    }
+
+    function drawVortex() {
+        vortexCanvas.width = window.innerWidth;
+        vortexCanvas.height = window.innerHeight;
+        
+        const cx = vortexCanvas.width / 2;
+        const cy = vortexCanvas.height / 2;
+        
+        // Use a very faint clear to leave trails? No, for "scratched" we re-draw jittery each frame
+        ctxVortex.fillStyle = 'black';
+        ctxVortex.fillRect(0, 0, vortexCanvas.width, vortexCanvas.height);
+        
+        ctxVortex.strokeStyle = '#555'; 
+        ctxVortex.lineCap = 'butt'; // Rougher ends
+
+        const maxRadius = Math.max(cx, cy) * 1.5;
+        
+        // 1. Draw Scratched Spiral
+        ctxVortex.beginPath();
+        for (let i = 0; i < 2000; i++) {
+            const angle = 0.1 * i;
+            const r = 4 * angle; 
+            
+            // High jitter to make it look "scratched" and uneven
+            const drawAngle = angle + vortexAngle + (Math.random() * 0.05);
+            const jitterR = r + (Math.random() - 0.5) * 5;
+
+            const x = cx + jitterR * Math.cos(drawAngle);
+            const y = cy + jitterR * Math.sin(drawAngle);
+            
+            // Randomly break the line (dashed effect)
+            if (Math.random() > 0.15) {
+                ctxVortex.lineTo(x, y);
+            } else {
+                ctxVortex.moveTo(x, y);
+            }
+            
+            // 2. Dripping Effect (Vertical lines dropping from spiral)
+            if (Math.random() < 0.005) {
+                const dripLen = Math.random() * 60 + 10;
+                // Save pos
+                const prevX = x; 
+                const prevY = y;
+                
+                // Draw drip
+                ctxVortex.moveTo(x, y);
+                ctxVortex.lineTo(x, y + dripLen);
+                
+                // Return to spiral path
+                ctxVortex.moveTo(prevX, prevY); 
+            }
+
+            if (r > maxRadius) break;
+        }
+        
+        // Varying line width for texture
+        ctxVortex.lineWidth = Math.random() * 2 + 1;
+        ctxVortex.stroke();
+        
+        // 3. Extra Texture/Noise Overlay
+        ctxVortex.beginPath();
+        ctxVortex.strokeStyle = '#222';
+        for(let j=0; j<30; j++) {
+             const nx = Math.random() * vortexCanvas.width;
+             const ny = Math.random() * vortexCanvas.height;
+             ctxVortex.moveTo(nx, ny);
+             ctxVortex.lineTo(nx + (Math.random()-0.5)*20, ny + Math.random()*20);
+        }
+        ctxVortex.stroke();
+
+        vortexAngle -= 0.05; 
+    }
+
+    // --- MAIN LOOP ---
+    function animate() {
+        if (shutdownTriggered) return; 
+
+        requestAnimationFrame(animate);
+        frame++;
+
+        // GAME OVER LOGIC
+        if (stress >= 100) {
+            if (!isGameOver) {
+                isGameOver = true;
+                
+                if(audioCtx) masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+
+                gameOverScreen.style.display = 'flex';
+                container.innerHTML = ''; 
+                document.body.style.cursor = 'none'; 
+                
+                // Set Static Text
+                endText.innerHTML = "ケーブルで首を絞めろ、<br>それが君の望みだろ？";
+                
+                // TRIGGER SHUTDOWN
+                setTimeout(() => {
+                    shutdownTriggered = true;
+                    gameWrapper.style.display = 'none';
+                    gameOverScreen.style.display = 'none';
+                    document.body.style.backgroundColor = 'black';
+                    
+                    restartScreen.style.display = 'flex';
+                    requestAnimationFrame(() => {
+                        restartScreen.style.opacity = '1';
+                    });
+                }, 10000);
+            }
+            
+            // Draw Vortex background during Game Over state
+            drawVortex();
+            return;
+        }
+
+        // 1. UPDATE AUDIO SFX
+        if (audioCtx && masterGain && !isGameOver) {
+            if (stress > 1) { // Starts almost immediately
+                let normalizedStress = (stress - 1) / 99; 
+                // Using 1.2 power for linear-ish but slightly curved ramp (louder sooner)
+                let targetVol = Math.pow(normalizedStress, 1.2); 
+                
+                if (stress < 70) {
+                    const signalStability = 0.5 + ((stress - 1) / 100); 
+                    if (Math.random() > signalStability) targetVol = 0;
+                }
+                
+                masterGain.gain.setTargetAtTime(targetVol, audioCtx.currentTime, 0.1);
+
+                const jitter = Math.random() * 20;
+                screamOsc1.frequency.setTargetAtTime(800 + (stress * 10) + jitter, audioCtx.currentTime, 0.1);
+                screamOsc2.frequency.setTargetAtTime(600 + (stress * 8) - jitter, audioCtx.currentTime, 0.1);
+
+            } else {
+                masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+            }
+        }
+
+        // 2. UPDATE STRESS VISUALS
+        if (stress < 0) stress = 0;
+        stressBar.style.width = `${stress}%`;
+        bloodOverlay.style.opacity = stress / 100;
+        
+        // 3. INPUT LOGIC
+        if (isInputActive) {
+            stress -= 1.5; 
+            for(let i=0; i<3; i++) {
+                const rx = Math.random() * window.innerWidth;
+                const ry = Math.random() * window.innerHeight;
+                spawnText(rx, ry, 1.0); 
+            }
+            const camShake = 5;
+            container.style.transform = `translate(${(Math.random()-0.5)*camShake}px, ${(Math.random()-0.5)*camShake}px)`;
+        } else {
+            container.style.transform = `none`;
+
+            const baseRate = parseFloat(intrusionSlider.value);
+            const stressRate = stress * 0.005; 
+            
+            if (Math.random() < (baseRate + stressRate)) { 
+                const rx = Math.random() * window.innerWidth;
+                const ry = Math.random() * window.innerHeight;
+                spawnText(rx, ry, Math.random() * 0.4 + 0.1 + (stress/200)); 
+            }
+        }
+
+        // 4. UPDATE PARTICLES
+        for (let i = activeThoughts.length - 1; i >= 0; i--) {
+            const t = activeThoughts[i];
+            t.update();
+            if (t.isDead()) {
+                t.destroy();
+                activeThoughts.splice(i, 1);
+            }
+        }
+
+        if (activeThoughts.length > 300) {
+            activeThoughts[0].destroy();
+            activeThoughts.shift();
+        }
+    }
+
+    animate();
+
+</script>
+</body>
+</html>
